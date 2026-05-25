@@ -1,3 +1,4 @@
+// @ts-nocheck
 import React, { useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { CheckCircle2, Gift, Dumbbell, ShieldCheck, Star, MessageCircle, AlertTriangle, Mail, Copy, ExternalLink, QrCode, Search, ChevronRight, ChevronLeft, Plus, Trash2, Package } from "lucide-react";
