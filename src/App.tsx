@@ -22,20 +22,32 @@ const SUPPORT_EMAIL = "support@endurxpro.com";
 const GIFT_CARD_CLAIM_NOTE = "Gift card claim submitted. Please allow 24-72 hours for review and delivery.";
 const FORMSPREE_ENDPOINT = "https://formspree.io/f/mkoeppbn";
 
-function amazonReviewUrl(asin) {
-  return `https://www.amazon.com/review/create-review?asin=${asin}`;
+function amazonReviewUrl(productOrAsin) {
+  if (typeof productOrAsin === "object" && productOrAsin?.reviewUrl) return productOrAsin.reviewUrl;
+  const asin = typeof productOrAsin === "object" ? productOrAsin?.asin : productOrAsin;
+  return `https://www.amazon.com/review/create-review/?asin=${asin}`;
 }
 
 const starterProducts = [
-  { name: "25 lb Weighted Vest", asin: "B0EXAMPLE25", marketplace: "United States", platform: "Amazon" },
-  { name: "35 lb Weighted Vest", asin: "B0EXAMPLE35", marketplace: "United States", platform: "Amazon" },
-  { name: "45 lb Weighted Vest", asin: "B0EXAMPLE45", marketplace: "United States", platform: "Amazon" },
+  { name: "25 lb Weighted Vest", asin: "B0DJK2N538", marketplace: "United States", platform: "Amazon", reviewUrl: "https://www.amazon.com/review/create-review/?asin=B0DJK2N538" },
+  { name: "35 lb Weighted Vest", asin: "B0DJK1KYJC", marketplace: "United States", platform: "Amazon", reviewUrl: "https://www.amazon.com/review/create-review/?asin=B0DJK1KYJC" },
+  { name: "45 lb Weighted Vest", asin: "B0DJK2RXJK", marketplace: "United States", platform: "Amazon", reviewUrl: "https://www.amazon.com/review/create-review/?asin=B0DJK2RXJK" },
 ];
 
+const defaultPromotion = {
+  brandName: "EndurXPro Rewards",
+  headline: "Complete the form to get your",
+  rewardAmount: "$5",
+  rewardType: "Amazon Gift Card",
+  buttonText: "Submit Gift Card Claim",
+  confirmationText: "Gift card claim submitted. Please allow 24-72 hours for review and delivery.",
+  supportEmail: SUPPORT_EMAIL,
+};
+
 const demoClaims = [
-  { id: "EX-1048", name: "Maya R.", email: "maya@example.com", product: "45 lb Weighted Vest", asin: "B0EXAMPLE45", rating: 5, status: "Gift card claimed", issue: "No issue", date: "May 25" },
-  { id: "EX-1047", name: "James K.", email: "james@example.com", product: "35 lb Weighted Vest", asin: "B0EXAMPLE35", rating: 3, status: "Support needed", issue: "Missing block question", date: "May 24" },
-  { id: "EX-1046", name: "Nia T.", email: "nia@example.com", product: "25 lb Weighted Vest", asin: "B0EXAMPLE25", rating: 4, status: "Review link clicked", issue: "No issue", date: "May 23" },
+  { id: "EX-1048", name: "Maya R.", email: "maya@example.com", product: "45 lb Weighted Vest", asin: "B0DJK2RXJK", rating: 5, status: "Gift card claimed", issue: "No issue", date: "May 25" },
+  { id: "EX-1047", name: "James K.", email: "james@example.com", product: "35 lb Weighted Vest", asin: "B0DJK1KYJC", rating: 3, status: "Support needed", issue: "Missing block question", date: "May 24" },
+  { id: "EX-1046", name: "Nia T.", email: "nia@example.com", product: "25 lb Weighted Vest", asin: "B0DJK2N538", rating: 4, status: "Review link clicked", issue: "No issue", date: "May 23" },
 ];
 
 const ratingLabels = {
@@ -85,8 +97,21 @@ export default function EndurXProGiftCardFunnel() {
   const [step, setStep] = useState(1);
   const [search, setSearch] = useState("");
   const [errors, setErrors] = useState({});
-  const [products, setProducts] = useState(starterProducts);
-  const [newProduct, setNewProduct] = useState({ name: "", asin: "", marketplace: "United States", platform: "Amazon" });
+  const [products, setProducts] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem("endurxpro_products")) || starterProducts;
+    } catch {
+      return starterProducts;
+    }
+  });
+  const [promotion, setPromotion] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem("endurxpro_promotion")) || defaultPromotion;
+    } catch {
+      return defaultPromotion;
+    }
+  });
+  const [newProduct, setNewProduct] = useState({ name: "", asin: "", marketplace: "United States", platform: "Amazon", reviewUrl: "" });
   const [form, setForm] = useState({
     product: starterProducts[2].name,
     asin: starterProducts[2].asin,
@@ -103,7 +128,7 @@ export default function EndurXProGiftCardFunnel() {
   });
 
   const selectedProduct = products.find((item) => item.name === form.product) || products[0];
-  const productReviewLink = amazonReviewUrl(selectedProduct?.asin || form.asin);
+  const productReviewLink = amazonReviewUrl(selectedProduct || form.asin);
 
   const filteredClaims = useMemo(() => {
     return demoClaims.filter((claim) =>
@@ -202,14 +227,23 @@ export default function EndurXProGiftCardFunnel() {
     }
   }
 
+  function savePromotion() {
+    localStorage.setItem("endurxpro_promotion", JSON.stringify(promotion));
+    alert("Promotion saved on this browser. For all customers to see admin changes, connect Supabase database next.");
+  }
+
   function addProduct() {
     if (!newProduct.name.trim() || !newProduct.asin.trim()) return;
-    setProducts((prev) => [...prev, { ...newProduct, asin: newProduct.asin.trim().toUpperCase() }]);
-    setNewProduct({ name: "", asin: "", marketplace: "United States", platform: "Amazon" });
+    const updatedProducts = [...products, { ...newProduct, asin: newProduct.asin.trim().toUpperCase() }];
+    setProducts(updatedProducts);
+    localStorage.setItem("endurxpro_products", JSON.stringify(updatedProducts));
+    setNewProduct({ name: "", asin: "", marketplace: "United States", platform: "Amazon", reviewUrl: "" });
   }
 
   function removeProduct(asin) {
-    setProducts((prev) => prev.filter((item) => item.asin !== asin));
+    const updatedProducts = products.filter((item) => item.asin !== asin);
+    setProducts(updatedProducts);
+    localStorage.setItem("endurxpro_products", JSON.stringify(updatedProducts));
   }
 
   return (
@@ -235,16 +269,16 @@ export default function EndurXProGiftCardFunnel() {
       {view === "customer" ? (
         <main className="mx-auto max-w-md px-4 pb-12">
           <Card className="overflow-hidden rounded-[2rem] border-0 bg-white shadow-2xl">
-            <div className="bg-teal-500 px-5 py-4 text-sm font-black text-white">EndurXPro Rewards</div>
+            <div className="bg-teal-500 px-5 py-4 text-sm font-black text-white">{promotion.brandName}</div>
             <CardContent className="p-6">
               <Progress step={step} />
 
               {step === 1 && (
                 <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="space-y-5">
                   <div className="text-center">
-                    <h1 className="text-2xl font-black leading-tight text-slate-700">Complete the form to get your<br />$5 Amazon Gift Card</h1>
+                    <h1 className="text-2xl font-black leading-tight text-slate-700">{promotion.headline}<br />{promotion.rewardAmount} {promotion.rewardType}</h1>
                     <div className="mx-auto mt-6 flex h-28 w-48 items-center justify-center rounded-2xl bg-orange-400 text-center text-white shadow-md">
-                      <div><div className="text-4xl font-black lowercase">amazon</div><div className="text-xl font-black">$5 GIFT CARD</div></div>
+                      <div><div className="text-4xl font-black lowercase">amazon</div><div className="text-xl font-black">{promotion.rewardAmount} GIFT CARD</div></div>
                     </div>
                   </div>
 
@@ -292,9 +326,9 @@ export default function EndurXProGiftCardFunnel() {
                 <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="space-y-5">
                   <div className="text-center">
                     <div className="mx-auto flex h-28 w-48 items-center justify-center rounded-2xl bg-orange-400 text-center text-white shadow-md">
-                      <div><div className="text-4xl font-black lowercase">amazon</div><div className="text-xl font-black">$5 GIFT CARD</div></div>
+                      <div><div className="text-4xl font-black lowercase">amazon</div><div className="text-xl font-black">{promotion.rewardAmount} GIFT CARD</div></div>
                     </div>
-                    <h2 className="mt-5 text-2xl font-black text-slate-700">$5 Amazon Gift Card</h2>
+                    <h2 className="mt-5 text-2xl font-black text-slate-700">{promotion.rewardAmount} {promotion.rewardType}</h2>
                     <p className="mt-2 text-sm font-semibold text-slate-500">Your gift card will be sent to your e-mail address.</p>
                   </div>
 
@@ -351,7 +385,7 @@ export default function EndurXProGiftCardFunnel() {
                       <h3 className="text-xl font-black text-slate-800">Ready to share your review on Amazon?</h3>
                       <p className="mt-1 text-xs font-semibold text-slate-600">Click the button below to copy your written feedback and open the correct Amazon review page for this product.</p>
                       <Button onClick={copyFeedback} className="mt-4 h-11 w-full rounded-xl bg-white font-black text-slate-800 ring-1 ring-yellow-300 hover:bg-yellow-100">Copy Feedback + Open Amazon</Button>
-                      <a href={productReviewLink} target="_blank" className="mt-3 flex h-12 w-full items-center justify-center rounded-xl bg-yellow-400 px-4 font-black text-slate-900 shadow-md hover:bg-yellow-500">
+                      <a href={productReviewLink} target="_blank" rel="noopener noreferrer" className="mt-3 flex h-12 w-full items-center justify-center rounded-xl bg-yellow-400 px-4 font-black text-slate-900 shadow-md hover:bg-yellow-500">
                         <span className="mr-2 text-xl">a</span> Leave Review on Amazon <ExternalLink className="ml-2 h-4 w-4" />
                       </a>
                     </div>
@@ -379,7 +413,7 @@ export default function EndurXProGiftCardFunnel() {
 
                   {happyCustomer ? (
                     <div className="space-y-3">
-                      <a href={productReviewLink} target="_blank" className="flex items-center justify-center rounded-xl bg-yellow-400 px-4 py-3 font-black text-slate-900 shadow-sm hover:bg-yellow-500">
+                      <a href={productReviewLink} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center rounded-xl bg-yellow-400 px-4 py-3 font-black text-slate-900 shadow-sm hover:bg-yellow-500">
                         <span className="mr-2 text-xl">a</span> Leave an honest review on Amazon <ExternalLink className="ml-2 h-4 w-4" />
                       </a>
                       <a href={`mailto:${SUPPORT_EMAIL}`} className="flex items-center justify-center rounded-xl border bg-white px-4 py-3 font-black text-slate-700">
@@ -397,7 +431,7 @@ export default function EndurXProGiftCardFunnel() {
                     </div>
                   )}
 
-                  <Button onClick={submitClaim} className="h-12 w-full rounded-xl bg-teal-500 font-black text-white hover:bg-teal-600">Submit Gift Card Claim <ChevronRight className="ml-1 h-4 w-4" /></Button>
+                  <Button onClick={submitClaim} className="h-12 w-full rounded-xl bg-teal-500 font-black text-white hover:bg-teal-600">{promotion.buttonText} <ChevronRight className="ml-1 h-4 w-4" /></Button>
                   <button onClick={backStep} className="mx-auto flex items-center text-sm font-bold text-indigo-400"><ChevronLeft className="h-4 w-4" /> Back</button>
                   <div className="pt-6 text-xs font-semibold text-teal-500">Terms and Conditions | Privacy Policy</div>
                 </motion.div>
@@ -409,7 +443,7 @@ export default function EndurXProGiftCardFunnel() {
                     <CheckCircle2 className="mx-auto mb-3 h-12 w-12 text-green-600" />
                     <h2 className="text-2xl font-black">Your claim was submitted!</h2>
                     <p className="mt-2 text-sm text-slate-600">Gift Card Claim ID: <span className="font-black text-slate-900">{claimId}</span></p>
-                    <p className="mt-2 text-sm font-semibold text-slate-500">{GIFT_CARD_CLAIM_NOTE}</p>
+                    <p className="mt-2 text-sm font-semibold text-slate-500">{promotion.confirmationText}</p>
                   </div>
                   <div className="pt-6 text-xs font-semibold text-teal-500">Terms and Conditions | Privacy Policy</div>
                 </motion.div>
@@ -472,14 +506,41 @@ export default function EndurXProGiftCardFunnel() {
                 <div className="mb-5 flex items-center gap-3">
                   <Package className="h-8 w-8 text-teal-500" />
                   <div>
-                    <h2 className="text-2xl font-black">Products + Amazon ASINs</h2>
-                    <p className="text-sm font-semibold text-slate-500">Add each product ASIN so the funnel can send customers to the correct Amazon product review page.</p>
+                    <h2 className="text-2xl font-black">Promotions + Products</h2>
+                    <p className="text-sm font-semibold text-slate-500">Change the promotion text and add product ASINs for Amazon review redirects.</p>
                   </div>
                 </div>
 
-                <div className="grid gap-3 rounded-3xl bg-slate-50 p-4 md:grid-cols-[1.2fr_.8fr_.8fr_.8fr_auto]">
+                <div className="mb-6 rounded-3xl border bg-white p-5 shadow-sm">
+                  <h3 className="mb-4 text-xl font-black">Promotion Editor</h3>
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <label className="text-sm font-bold text-slate-700">Brand/Header Text
+                      <input value={promotion.brandName} onChange={(e) => setPromotion({ ...promotion, brandName: e.target.value })} className="mt-2 w-full rounded-xl border px-4 py-3 text-sm font-bold outline-none focus:ring-2 focus:ring-teal-400" />
+                    </label>
+                    <label className="text-sm font-bold text-slate-700">Headline
+                      <input value={promotion.headline} onChange={(e) => setPromotion({ ...promotion, headline: e.target.value })} className="mt-2 w-full rounded-xl border px-4 py-3 text-sm font-bold outline-none focus:ring-2 focus:ring-teal-400" />
+                    </label>
+                    <label className="text-sm font-bold text-slate-700">Reward Amount
+                      <input value={promotion.rewardAmount} onChange={(e) => setPromotion({ ...promotion, rewardAmount: e.target.value })} className="mt-2 w-full rounded-xl border px-4 py-3 text-sm font-bold outline-none focus:ring-2 focus:ring-teal-400" placeholder="$5" />
+                    </label>
+                    <label className="text-sm font-bold text-slate-700">Reward Type
+                      <input value={promotion.rewardType} onChange={(e) => setPromotion({ ...promotion, rewardType: e.target.value })} className="mt-2 w-full rounded-xl border px-4 py-3 text-sm font-bold outline-none focus:ring-2 focus:ring-teal-400" placeholder="Amazon Gift Card" />
+                    </label>
+                    <label className="text-sm font-bold text-slate-700">Submit Button Text
+                      <input value={promotion.buttonText} onChange={(e) => setPromotion({ ...promotion, buttonText: e.target.value })} className="mt-2 w-full rounded-xl border px-4 py-3 text-sm font-bold outline-none focus:ring-2 focus:ring-teal-400" />
+                    </label>
+                    <label className="text-sm font-bold text-slate-700">Confirmation Message
+                      <input value={promotion.confirmationText} onChange={(e) => setPromotion({ ...promotion, confirmationText: e.target.value })} className="mt-2 w-full rounded-xl border px-4 py-3 text-sm font-bold outline-none focus:ring-2 focus:ring-teal-400" />
+                    </label>
+                  </div>
+                  <Button onClick={savePromotion} className="mt-4 h-12 rounded-xl bg-teal-500 px-6 font-black text-white hover:bg-teal-600">Save Promotion</Button>
+                  <p className="mt-3 text-xs font-semibold text-amber-700">This saves on your browser right now. To make admin changes update for every customer, connect Supabase next.</p>
+                </div>
+
+                <div className="grid gap-3 rounded-3xl bg-slate-50 p-4 md:grid-cols-[1.1fr_.7fr_1.3fr_.7fr_.7fr_auto]">
                   <input value={newProduct.name} onChange={(e) => setNewProduct({ ...newProduct, name: e.target.value })} placeholder="Product name, ex: 45 lb Weighted Vest" className="rounded-xl border px-4 py-3 text-sm font-bold outline-none focus:ring-2 focus:ring-teal-400" />
-                  <input value={newProduct.asin} onChange={(e) => setNewProduct({ ...newProduct, asin: e.target.value })} placeholder="ASIN" className="rounded-xl border px-4 py-3 text-sm font-bold uppercase outline-none focus:ring-2 focus:ring-teal-400" />
+                  <input value={newProduct.asin} onChange={(e) => setNewProduct({ ...newProduct, asin: e.target.value, reviewUrl: `https://www.amazon.com/review/create-review/?asin=${e.target.value.trim().toUpperCase()}` })} placeholder="ASIN" className="rounded-xl border px-4 py-3 text-sm font-bold uppercase outline-none focus:ring-2 focus:ring-teal-400" />
+                  <input value={newProduct.reviewUrl} onChange={(e) => setNewProduct({ ...newProduct, reviewUrl: e.target.value })} placeholder="Amazon review link" className="rounded-xl border px-4 py-3 text-sm font-bold outline-none focus:ring-2 focus:ring-teal-400" />
                   <select value={newProduct.marketplace} onChange={(e) => setNewProduct({ ...newProduct, marketplace: e.target.value })} className="rounded-xl border px-4 py-3 text-sm font-bold outline-none focus:ring-2 focus:ring-teal-400"><option>United States</option><option>Canada</option><option>United Kingdom</option></select>
                   <select value={newProduct.platform} onChange={(e) => setNewProduct({ ...newProduct, platform: e.target.value })} className="rounded-xl border px-4 py-3 text-sm font-bold outline-none focus:ring-2 focus:ring-teal-400"><option>Amazon</option></select>
                   <Button onClick={addProduct} className="rounded-xl bg-teal-500 px-4 font-black hover:bg-teal-600"><Plus className="h-4 w-4" /></Button>
@@ -487,14 +548,14 @@ export default function EndurXProGiftCardFunnel() {
 
                 <div className="mt-6 overflow-hidden rounded-2xl border">
                   <table className="w-full text-left text-sm">
-                    <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500"><tr><th className="p-3">Product</th><th className="p-3">ASIN</th><th className="p-3">Marketplace</th><th className="p-3">Review Page</th><th className="p-3">Action</th></tr></thead>
+                    <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500"><tr><th className="p-3">Product</th><th className="p-3">ASIN</th><th className="p-3">Marketplace</th><th className="p-3">Review Link</th><th className="p-3">Action</th></tr></thead>
                     <tbody>
                       {products.map((product) => (
                         <tr key={product.asin} className="border-t bg-white">
                           <td className="p-3 font-black">{product.name}</td>
                           <td className="p-3 text-xs font-black text-slate-500">{product.asin}</td>
                           <td className="p-3 font-semibold">{product.marketplace}</td>
-                          <td className="p-3"><a href={amazonReviewUrl(product.asin)} target="_blank" className="inline-flex items-center text-xs font-black text-teal-600 underline">Open review page <ExternalLink className="ml-1 h-3 w-3" /></a></td>
+                          <td className="p-3"><a href={amazonReviewUrl(product)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center text-xs font-black text-teal-600 underline">Open review page <ExternalLink className="ml-1 h-3 w-3" /></a></td>
                           <td className="p-3"><button onClick={() => removeProduct(product.asin)} className="rounded-xl bg-red-50 p-2 text-red-500 hover:bg-red-100"><Trash2 className="h-4 w-4" /></button></td>
                         </tr>
                       ))}
