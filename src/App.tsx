@@ -20,7 +20,7 @@ function Button({ className = "", children, onClick, type = "button", variant })
 
 const SUPPORT_EMAIL = "support@endurxpro.com";
 const GIFT_CARD_CLAIM_NOTE = "Gift card claim submitted. Please allow 24-72 hours for review and delivery.";
-const FORMSPREE_ENDPOINT = "PASTE_YOUR_FORMSPREE_ENDPOINT_HERE";
+const FORMSPREE_ENDPOINT = "https://formspree.io/f/mkoeppbn";
 
 function amazonReviewUrl(asin) {
   return `https://www.amazon.com/review/create-review?asin=${asin}`;
