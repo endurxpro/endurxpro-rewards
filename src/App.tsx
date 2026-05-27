@@ -1,4 +1,3 @@
-// @ts-nocheck
 import React, { useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { CheckCircle2, Gift, Dumbbell, ShieldCheck, Star, MessageCircle, AlertTriangle, Mail, Copy, ExternalLink, QrCode, Search, ChevronRight, ChevronLeft, Plus, Trash2, Package } from "lucide-react";
@@ -80,7 +79,8 @@ function StarRating({ value, onChange }) {
 }
 
 export default function EndurXProGiftCardFunnel() {
-  const [view, setView] = useState("customer");
+  const isAdmin = typeof window !== "undefined" && window.location.search.includes("admin=1");
+  const [view, setView] = useState(isAdmin ? "admin" : "customer");
   const [adminTab, setAdminTab] = useState("claims");
   const [step, setStep] = useState(1);
   const [search, setSearch] = useState("");
@@ -224,10 +224,12 @@ export default function EndurXProGiftCardFunnel() {
             <div className="text-xs font-medium text-slate-500">Gift Card Claim + Feedback Funnel</div>
           </div>
         </div>
-        <div className="flex rounded-2xl border bg-white p-1 shadow-sm">
-          <button onClick={() => setView("customer")} className={`rounded-xl px-4 py-2 text-sm font-bold ${view === "customer" ? "bg-black text-white" : "text-slate-600"}`}>Customer Page</button>
-          <button onClick={() => setView("admin")} className={`rounded-xl px-4 py-2 text-sm font-bold ${view === "admin" ? "bg-black text-white" : "text-slate-600"}`}>Admin</button>
-        </div>
+        {isAdmin && (
+          <div className="flex rounded-2xl border bg-white p-1 shadow-sm">
+            <button onClick={() => setView("customer")} className={`rounded-xl px-4 py-2 text-sm font-bold ${view === "customer" ? "bg-black text-white" : "text-slate-600"}`}>Customer Page</button>
+            <button onClick={() => setView("admin")} className={`rounded-xl px-4 py-2 text-sm font-bold ${view === "admin" ? "bg-black text-white" : "text-slate-600"}`}>Admin</button>
+          </div>
+        )}
       </header>
 
       {view === "customer" ? (
